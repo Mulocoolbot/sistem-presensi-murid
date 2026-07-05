@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { ShieldAlert, Check, RefreshCw, Save, CheckSquare } from 'lucide-react';
+import { ShieldAlert, Check, RefreshCw, Save, CheckSquare, Wifi, WifiOff } from 'lucide-react';
 
 interface Assignment {
   id: string;
@@ -45,10 +45,106 @@ export default function AttendanceWizardPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // PWA & Offline states
+  const [isOnline, setIsOnline] = useState(true);
+  const [offlineQueueLength, setOfflineQueueLength] = useState(0);
+
   const handleDateChange = (val: string) => {
     setDate(val);
     setDayOfWeek(getIndonesianDayName(val));
   };
+
+  // Sync Offline Queue to Server
+  const syncOfflineData = useCallback(async () => {
+    if (typeof window === 'undefined' || !navigator.onLine) return;
+    const queueJson = localStorage.getItem('sipms_offline_queue');
+    if (!queueJson) {
+      setOfflineQueueLength(0);
+      return;
+    }
+    
+    try {
+      const queue = JSON.parse(queueJson);
+      if (!Array.isArray(queue) || queue.length === 0) {
+        setOfflineQueueLength(0);
+        return;
+      }
+      
+      setSubmitLoading(true);
+      setError('');
+      setSuccess('Sinkronisasi data offline sedang berjalan...');
+      
+      let successfulCount = 0;
+      const failedItems: any[] = [];
+      
+      for (const item of queue) {
+        try {
+          const res = await fetch('/api/teacher/attendance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(item.payload),
+          });
+          if (res.ok) {
+            successfulCount++;
+          } else {
+            const data = await res.json();
+            console.error('Gagal menyinkronkan item:', data.error || res.statusText);
+            failedItems.push(item);
+          }
+        } catch (err) {
+          console.error('Error menyinkronkan item:', err);
+          failedItems.push(item);
+        }
+      }
+      
+      if (failedItems.length > 0) {
+        localStorage.setItem('sipms_offline_queue', JSON.stringify(failedItems));
+        setOfflineQueueLength(failedItems.length);
+        setError(`Tersinkronisasi ${successfulCount} data. ${failedItems.length} data gagal disinkronkan.`);
+      } else {
+        localStorage.removeItem('sipms_offline_queue');
+        setOfflineQueueLength(0);
+        setSuccess(`Berhasil menyinkronkan ${successfulCount} data presensi offline ke server!`);
+      }
+    } catch (e) {
+      console.error('Gagal memproses antrean offline:', e);
+    } finally {
+      setSubmitLoading(false);
+    }
+  }, []);
+
+  // Monitor network status
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const updateOnlineStatus = () => {
+      const online = navigator.onLine;
+      setIsOnline(online);
+      if (online) {
+        syncOfflineData();
+      }
+    };
+
+    setIsOnline(navigator.onLine);
+    
+    // Check initial queue length
+    const queueJson = localStorage.getItem('sipms_offline_queue');
+    if (queueJson) {
+      try {
+        const queue = JSON.parse(queueJson);
+        if (Array.isArray(queue)) {
+          setOfflineQueueLength(queue.length);
+        }
+      } catch (_) {}
+    }
+
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    return () => {
+      window.removeEventListener('online', updateOnlineStatus);
+      window.removeEventListener('offline', updateOnlineStatus);
+    };
+  }, [syncOfflineData]);
 
   // Load teacher assignments
   useEffect(() => {
@@ -61,13 +157,30 @@ export default function AttendanceWizardPage() {
         })
         .then((data) => {
           setAssignments(data);
+          // Cache in local storage
+          localStorage.setItem('sipms_cached_assignments', JSON.stringify(data));
           if (data.length > 0) {
             setSelectedAssignmentId(data[0].id);
           }
           setLoading(false);
         })
         .catch((err: unknown) => {
-          setError(err instanceof Error ? err.message : 'Terjadi kesalahan');
+          // If offline, attempt to load cached assignments
+          const cached = localStorage.getItem('sipms_cached_assignments');
+          if (cached) {
+            try {
+              const data = JSON.parse(cached);
+              setAssignments(data);
+              if (data.length > 0) {
+                setSelectedAssignmentId(data[0].id);
+              }
+              setError('Menggunakan daftar jadwal mengajar offline (Perangkat lokal).');
+            } catch (_) {
+              setError(err instanceof Error ? err.message : 'Terjadi kesalahan');
+            }
+          } else {
+            setError(err instanceof Error ? err.message : 'Terjadi kesalahan');
+          }
           setLoading(false);
         });
     }, 0);
@@ -88,7 +201,38 @@ export default function AttendanceWizardPage() {
     setError('');
     setSuccess('');
     
+    const cacheKey = `sipms_students_${assignment.classId}_${assignment.subjectId}`;
+    const dateCacheKey = `sipms_attendance_${assignment.classId}_${assignment.subjectId}_${date}_${periodTime}`;
+    
     try {
+      if (!navigator.onLine) {
+        // Load from local cache if offline
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const cachedStudents = JSON.parse(cached);
+          const cachedAttendance = localStorage.getItem(dateCacheKey);
+          
+          if (cachedAttendance) {
+            setStudents(JSON.parse(cachedAttendance));
+            setSuccess('Memuat lembar presensi yang tersimpan lokal (Offline).');
+          } else {
+            // Set all to default HADIR
+            const defaultStudents = cachedStudents.map((s: any) => ({
+              ...s,
+              attendanceStatus: 'HADIR',
+              note: ''
+            }));
+            setStudents(defaultStudents);
+            setError('Memuat daftar siswa offline (Belum ada catatan presensi hari ini).');
+          }
+        } else {
+          throw new Error('Tidak ada data siswa offline yang tersimpan untuk kelas ini. Hubungkan ke internet terlebih dahulu.');
+        }
+        setLoading(false);
+        return;
+      }
+
+      // Online behavior
       const params = new URLSearchParams({
         classId: assignment.classId,
         subjectId: assignment.subjectId,
@@ -101,6 +245,19 @@ export default function AttendanceWizardPage() {
       if (!res.ok) throw new Error(data.error || 'Gagal memuat form presensi');
 
       setStudents(data.students);
+      
+      // Cache students list (basic student info)
+      const baseStudents = data.students.map((s: any) => ({
+        id: s.id,
+        nis: s.nis,
+        fullName: s.fullName,
+        gender: s.gender
+      }));
+      localStorage.setItem(cacheKey, JSON.stringify(baseStudents));
+      
+      // Cache the active attendance state as well
+      localStorage.setItem(dateCacheKey, JSON.stringify(data.students));
+
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Terjadi kesalahan');
       setStudents([]);
@@ -139,25 +296,70 @@ export default function AttendanceWizardPage() {
       }
     }
 
+    const payload = {
+      classId: assignment.classId,
+      subjectId: assignment.subjectId,
+      date,
+      periodTime,
+      dayOfWeek,
+      academicYear: assignment.academicYear,
+      semester: assignment.semester,
+      students: students.map((s) => ({
+        studentId: s.id,
+        fullName: s.fullName,
+        status: s.attendanceStatus,
+        note: s.note,
+      })),
+    };
+
+    // Cache local attendance state immediately on save
+    const dateCacheKey = `sipms_attendance_${assignment.classId}_${assignment.subjectId}_${date}_${periodTime}`;
+    localStorage.setItem(dateCacheKey, JSON.stringify(students));
+
+    if (!navigator.onLine) {
+      // Save offline
+      try {
+        const queueJson = localStorage.getItem('sipms_offline_queue');
+        const queue = queueJson ? JSON.parse(queueJson) : [];
+        
+        // Check if this date/period is already in the queue to overwrite it
+        const existingIndex = queue.findIndex((item: any) => 
+          item.classId === assignment.classId && 
+          item.subjectId === assignment.subjectId && 
+          item.date === date && 
+          item.periodTime === periodTime
+        );
+
+        const queueItem = {
+          classId: assignment.classId,
+          subjectId: assignment.subjectId,
+          date,
+          periodTime,
+          payload,
+          timestamp: Date.now()
+        };
+
+        if (existingIndex > -1) {
+          queue[existingIndex] = queueItem;
+        } else {
+          queue.push(queueItem);
+        }
+
+        localStorage.setItem('sipms_offline_queue', JSON.stringify(queue));
+        setOfflineQueueLength(queue.length);
+        
+        setSuccess('Koneksi offline terdeteksi! Presensi disimpan secara lokal di perangkat Anda dan akan disinkronkan otomatis saat terhubung kembali.');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } catch (e) {
+        setError('Gagal menyimpan presensi offline: ' + (e instanceof Error ? e.message : 'Terjadi kesalahan'));
+      }
+      return;
+    }
+
+    // Online behavior
     setSubmitLoading(true);
 
     try {
-      const payload = {
-        classId: assignment.classId,
-        subjectId: assignment.subjectId,
-        date,
-        periodTime,
-        dayOfWeek,
-        academicYear: assignment.academicYear,
-        semester: assignment.semester,
-        students: students.map((s) => ({
-          studentId: s.id,
-          fullName: s.fullName,
-          status: s.attendanceStatus,
-          note: s.note,
-        })),
-      };
-
       const res = await fetch('/api/teacher/attendance', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -168,7 +370,6 @@ export default function AttendanceWizardPage() {
       if (!res.ok) throw new Error(data.error || 'Gagal menyimpan presensi');
 
       setSuccess('Presensi berhasil disimpan!');
-      // Scroll to top to see success alert
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Terjadi kesalahan');
@@ -181,11 +382,55 @@ export default function AttendanceWizardPage() {
 
   return (
     <div>
-      <div className="page-header">
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div className="page-title-section">
-          <h1>Pencatatan Presensi Digital</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <h1>Pencatatan Presensi Digital</h1>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '4px 10px',
+              borderRadius: 'var(--radius-full)',
+              fontSize: '0.75rem',
+              fontWeight: '700',
+              backgroundColor: isOnline ? 'var(--success-light)' : 'var(--danger-light)',
+              color: isOnline ? 'var(--success)' : 'var(--danger)',
+              border: `1px solid ${isOnline ? 'hsl(142, 76%, 85%)' : 'hsl(350, 89%, 90%)'}`,
+            }}>
+              {isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
+              <span>{isOnline ? 'Online' : 'Offline'}</span>
+            </div>
+          </div>
           <p>Lakukan input kehadiran siswa berdasarkan kelas, mata pelajaran, dan jadwal jam pelajaran</p>
         </div>
+        
+        {offlineQueueLength > 0 && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            backgroundColor: 'var(--warning-light)',
+            color: 'var(--warning)',
+            padding: '8px 16px',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid hsl(38, 92%, 85%)',
+            fontSize: '0.85rem',
+            fontWeight: '600'
+          }}>
+            <span>Ada <strong>{offlineQueueLength}</strong> data presensi tertunda.</span>
+            {isOnline && (
+              <button 
+                onClick={syncOfflineData}
+                className="btn btn-primary"
+                style={{ padding: '6px 12px', fontSize: '0.75rem', height: 'auto' }}
+                disabled={submitLoading}
+              >
+                <RefreshCw size={12} className={submitLoading ? 'spin' : ''} /> Sinkronisasi Sekarang
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {error && (
@@ -202,7 +447,7 @@ export default function AttendanceWizardPage() {
         </div>
       )}
 
-      {/* Filter / Wizard Wizard Controls */}
+      {/* Filter / Wizard Controls */}
       <div className="glass" style={styles.wizardCard}>
         <div style={styles.filterForm}>
           <div className="form-group" style={{ ...styles.filterCol, flexGrow: 2 }}>

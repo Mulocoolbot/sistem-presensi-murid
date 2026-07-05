@@ -5,6 +5,12 @@ import { isRateLimited } from '@/lib/rateLimiter';
 import { AccountStatus } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+
+const loginSchema = z.object({
+  username: z.string().min(3, { message: 'Username minimal 3 karakter' }).max(50),
+  password: z.string().min(6, { message: 'Password minimal 6 karakter' }),
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,11 +23,14 @@ export async function POST(request: NextRequest) {
       }, { status: 429 });
     }
 
-    const { username, password } = await request.json();
-
-    if (!username || !password) {
-      return NextResponse.json({ error: 'Username and password are required' }, { status: 400 });
+    const body = await request.json();
+    const parseResult = loginSchema.safeParse(body);
+    if (!parseResult.success) {
+      const errorMsg = parseResult.error.issues.map((issue) => issue.message).join(', ');
+      return NextResponse.json({ error: errorMsg }, { status: 400 });
     }
+
+    const { username, password } = parseResult.data;
 
     // Find User
     const user = await db.user.findUnique({
