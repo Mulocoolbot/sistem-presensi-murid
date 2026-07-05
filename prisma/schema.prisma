@@ -1,0 +1,247 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  SUPER_ADMIN
+  SCHOOL_ADMIN
+  TEACHER
+}
+
+enum AccountStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+}
+
+enum DocumentType {
+  KTP
+  SURAT_TUGAS
+  PAS_FOTO
+  KK
+}
+
+enum StudentStatus {
+  ACTIVE
+  MUTATED
+  GRADUATED
+  INACTIVE
+}
+
+enum AttendanceStatus {
+  HADIR
+  SAKIT
+  IZIN
+  ALPHA
+  TERLAMBAT
+  DISPENSASI
+}
+
+enum BackupType {
+  AUTO
+  MANUAL
+}
+
+model School {
+  id        String   @id @default(uuid())
+  name      String
+  address   String
+  phone     String
+  status    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users        User[]
+  classes      Class[]
+  students     Student[]
+  subjects     Subject[]
+  attendances  Attendance[]
+  backups      Backup[]
+  activityLogs ActivityLog[]
+}
+
+model User {
+  id           String        @id @default(uuid())
+  fullName     String
+  email        String        @unique
+  phone        String
+  username     String        @unique
+  passwordHash String
+  nik          String?       @unique
+  nip          String?       @unique
+  role         Role
+  status       AccountStatus @default(PENDING)
+  schoolId     String?       // Nullable only for SUPER_ADMIN
+  school       School?       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  
+  // Teacher-specific sub-roles (Can hold multiple simultaneously)
+  isKepalaSekolah Boolean @default(false)
+  isWaliKelas     Boolean @default(false)
+  isGuruMapel     Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  documents             VerificationDocument[]
+  classesAsWali         Class[]                 @relation("WaliKelas")
+  teacherSubjectClasses TeacherSubjectClass[]
+  attendances           Attendance[]
+  activityLogs          ActivityLog[]
+}
+
+model VerificationDocument {
+  id        String       @id @default(uuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      DocumentType
+  fileUrl   String
+  createdAt DateTime     @default(now())
+}
+
+model Class {
+  id          String  @id @default(uuid())
+  schoolId    String
+  school      School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  name        String
+  grade       String  // e.g., "10", "11", "12", or "7", "8", "9"
+  capacity    Int     @default(36)
+  waliKelasId String?
+  waliKelas   User?   @relation("WaliKelas", fields: [waliKelasId], references: [id], onDelete: SetNull)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  students              Student[]
+  teacherSubjectClasses TeacherSubjectClass[]
+  attendances           Attendance[]
+
+  @@unique([schoolId, name])
+}
+
+model Student {
+  id          String        @id @default(uuid())
+  schoolId    String
+  school      School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classId     String
+  class       Class         @relation(fields: [classId], references: [id])
+  nis         String        // Nomor Induk Siswa
+  nisn        String        // Nomor Induk Siswa Nasional
+  fullName    String
+  gender      String        // "L" / "P"
+  birthPlace  String
+  birthDate   DateTime
+  religion    String
+  address     String
+  parentName  String
+  parentPhone String
+  kkFileUrl   String?
+  status      StudentStatus @default(ACTIVE)
+  isDeleted   Boolean       @default(false) // Soft delete support
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  attendanceDetails AttendanceDetail[]
+
+  @@unique([schoolId, nis])
+  @@unique([schoolId, nisn])
+}
+
+model Subject {
+  id        String   @id @default(uuid())
+  schoolId  String
+  school    School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  name      String
+  code      String   // e.g., "MTK", "IND"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teacherSubjectClasses TeacherSubjectClass[]
+  attendances           Attendance[]
+
+  @@unique([schoolId, code])
+}
+
+model TeacherSubjectClass {
+  id           String   @id @default(uuid())
+  teacherId    String
+  teacher      User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subjectId    String
+  subject      Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  classId      String
+  class        Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  academicYear String   // e.g., "2025/2026"
+  semester     String   // "Ganjil" / "Genap"
+  createdAt    DateTime @default(now())
+
+  @@unique([teacherId, subjectId, classId, academicYear, semester])
+}
+
+model Attendance {
+  id           String   @id @default(uuid())
+  schoolId     String
+  school       School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classId      String
+  class        Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subjectId    String
+  subject      Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacherId    String
+  teacher      User     @relation(fields: [teacherId], references: [id])
+  academicYear String
+  semester     String
+  date         DateTime
+  periodTime   String   // e.g., "1-2" (Jam Pelajaran)
+  dayOfWeek    String   // e.g., "Senin"
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  details AttendanceDetail[]
+
+  @@unique([schoolId, classId, subjectId, date, periodTime])
+}
+
+model AttendanceDetail {
+  id           String           @id @default(uuid())
+  attendanceId String
+  attendance   Attendance       @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+  studentId    String
+  student      Student          @relation(fields: [studentId], references: [id])
+  status       AttendanceStatus
+  note         String?          // Required if not HADIR
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@unique([attendanceId, studentId])
+}
+
+model ActivityLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  schoolId    String?
+  school      School?  @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  username    String
+  role        String
+  action      String
+  ipAddress   String
+  deviceType  String
+  beforeData  Json?
+  afterData   Json?
+  createdAt   DateTime @default(now())
+}
+
+model Backup {
+  id          String     @id @default(uuid())
+  schoolId    String?
+  school      School?    @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  type        BackupType
+  filePath    String
+  description String
+  isDeleted   Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+}
