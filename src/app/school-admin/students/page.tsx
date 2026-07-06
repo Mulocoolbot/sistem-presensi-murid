@@ -8,6 +8,19 @@ interface ClassOption {
   name: string;
 }
 
+interface ImportedStudent {
+  nis: string;
+  nisn: string;
+  fullName: string;
+  gender: string;
+  className: string;
+  classNameMatched?: string;
+  classId?: string;
+  phone?: string;
+  address?: string;
+  guardianName?: string;
+}
+
 interface Student {
   id: string;
   nis: string;
@@ -67,7 +80,7 @@ export default function StudentsManagementPage() {
   // CSV Import States
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
-  const [importPreview, setImportPreview] = useState<any[]>([]);
+  const [importPreview, setImportPreview] = useState<ImportedStudent[]>([]);
   const [importError, setImportError] = useState('');
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -89,26 +102,28 @@ export default function StudentsManagementPage() {
         const delimiter = lines[0].includes(';') ? ';' : ',';
         const headers = lines[0].split(delimiter).map(h => h.trim().replace(/^["']|["']$/g, '').toLowerCase());
         
-        const parsedStudents: any[] = [];
+        const parsedStudents: ImportedStudent[] = [];
         
         for (let i = 1; i < lines.length; i++) {
           const cols = lines[i].split(delimiter).map(c => c.trim().replace(/^["']|["']$/g, ''));
           if (cols.length < 5) continue;
 
-          const studentObj: any = {};
+          const studentMap: Record<string, string> = {};
           headers.forEach((header, idx) => {
-            const val = cols[idx] || '';
-            if (header.includes('nisn')) studentObj.nisn = val;
-            else if (header.includes('nis')) studentObj.nis = val;
-            else if (header.includes('nama') || header.includes('name')) studentObj.fullName = val;
-            else if (header.includes('gender') || header.includes('kelamin') || header.includes('sex') || header.includes('jk')) {
-              studentObj.gender = val.toUpperCase();
-            }
-            else if (header.includes('kelas') || header.includes('class')) studentObj.className = val;
-            else if (header.includes('telp') || header.includes('phone') || header.includes('hp')) studentObj.phone = val;
-            else if (header.includes('alamat') || header.includes('address')) studentObj.address = val;
-            else if (header.includes('wali') || header.includes('parent')) studentObj.guardianName = val;
+            studentMap[header] = cols[idx] || '';
           });
+
+          // Extract values safely with fallbacks
+          const studentObj: ImportedStudent = {
+            nis: studentMap.nis || '',
+            nisn: studentMap.nisn || '',
+            fullName: studentMap.nama || studentMap.name || studentMap.fullname || '',
+            gender: (studentMap.gender || studentMap.kelamin || studentMap.sex || studentMap.jk || '').toUpperCase(),
+            className: studentMap.kelas || studentMap.class || '',
+            phone: studentMap.telepon || studentMap.phone || studentMap.hp || '',
+            address: studentMap.alamat || studentMap.address || '',
+            guardianName: studentMap.wali || studentMap.parent || studentMap.parentname || '',
+          };
 
           if (!studentObj.nis || !studentObj.nisn || !studentObj.fullName || !studentObj.gender || !studentObj.className) {
             throw new Error(`Baris ${i + 1} tidak lengkap. Kolom wajib: NIS, NISN, Nama, Gender (L/P), dan Kelas.`);
@@ -129,8 +144,8 @@ export default function StudentsManagementPage() {
         }
 
         setImportPreview(parsedStudents);
-      } catch (err: any) {
-        setImportError(err.message || 'Gagal memproses file CSV.');
+      } catch (err: unknown) {
+        setImportError(err instanceof Error ? err.message : 'Gagal memproses file CSV.');
         setImportPreview([]);
       }
     };
@@ -149,17 +164,17 @@ export default function StudentsManagementPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ students: importPreview })
       });
-      const data = await res.json();
+      const data = await res.json() as { success?: boolean; count?: number; error?: string };
       if (!res.ok) throw new Error(data.error || 'Gagal menyimpan data impor');
 
-      setSuccess(`Berhasil mengimpor ${data.count} data siswa baru!`);
+      setSuccess(`Berhasil mengimpor ${data.count || 0} data siswa baru!`);
       setImportModalOpen(false);
       setImportFile(null);
       setImportPreview([]);
       fetchStudents();
       setTimeout(() => setSuccess(''), 5000);
-    } catch (err: any) {
-      setImportError(err.message || 'Terjadi kesalahan.');
+    } catch (err: unknown) {
+      setImportError(err instanceof Error ? err.message : 'Terjadi kesalahan.');
     } finally {
       setSubmitLoading(false);
     }

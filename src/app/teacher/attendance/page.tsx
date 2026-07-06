@@ -23,6 +23,25 @@ interface StudentAttendance {
   note: string;
 }
 
+interface QueueItem {
+  classId: string;
+  date: string;
+  payload: {
+    classId: string;
+    date: string;
+    dayOfWeek: string;
+    academicYear: string;
+    semester: string;
+    students: Array<{
+      studentId: string;
+      fullName: string;
+      status: string;
+      note: string;
+    }>;
+  };
+  timestamp: number;
+}
+
 export default function AttendanceWizardPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [classes, setClasses] = useState<Array<{ id: string; name: string }>>([]);
@@ -46,9 +65,8 @@ export default function AttendanceWizardPage() {
   const [success, setSuccess] = useState('');
 
   // PWA & Offline states
-  const [isOnline, setIsOnline] = useState(true);
+  const [isOnline, setIsOnline] = useState(() => typeof window !== 'undefined' ? navigator.onLine : true);
   const [offlineQueueLength, setOfflineQueueLength] = useState(0);
-
   const handleDateChange = (val: string) => {
     setDate(val);
     setDayOfWeek(getIndonesianDayName(val));

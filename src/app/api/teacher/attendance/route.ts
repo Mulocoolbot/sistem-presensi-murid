@@ -126,7 +126,6 @@ export async function POST(request: NextRequest) {
         where: { id: attendance.id },
         include: { details: true }
       }) : null;
-
       if (!attendance) {
         attendance = await tx.attendance.create({
           data: {
@@ -136,7 +135,9 @@ export async function POST(request: NextRequest) {
             academicYear,
             semester,
             date: compareInput,
-            dayOfWeek
+            dayOfWeek,
+            subjectId: null,
+            periodTime: null
           }
         });
       } else {
