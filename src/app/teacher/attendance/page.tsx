@@ -25,7 +25,8 @@ interface StudentAttendance {
 
 export default function AttendanceWizardPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [selectedAssignmentId, setSelectedAssignmentId] = useState('');
+  const [classes, setClasses] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedClassId, setSelectedClassId] = useState('');
   
   // Get Day name in Indonesian
   const getIndonesianDayName = (dateStr: string) => {
@@ -37,7 +38,6 @@ export default function AttendanceWizardPage() {
   // Date and Time controls
   const [date, setDate] = useState(() => new Date().toISOString().substring(0, 10));
   const [dayOfWeek, setDayOfWeek] = useState(() => getIndonesianDayName(new Date().toISOString().substring(0, 10)));
-  const [periodTime, setPeriodTime] = useState('1-2'); // Jam Pelajaran 1-2
   
   const [students, setStudents] = useState<StudentAttendance[]>([]);
   const [loading, setLoading] = useState(false);
@@ -159,8 +159,15 @@ export default function AttendanceWizardPage() {
           setAssignments(data);
           // Cache in local storage
           localStorage.setItem('sipms_cached_assignments', JSON.stringify(data));
-          if (data.length > 0) {
-            setSelectedAssignmentId(data[0].id);
+          
+          // Extract unique classes
+          const uniqueClasses = Array.from(
+            new Map(data.map((a: any) => [a.classId, { id: a.classId, name: a.class.name }])).values()
+          ) as Array<{ id: string, name: string }>;
+          
+          setClasses(uniqueClasses);
+          if (uniqueClasses.length > 0) {
+            setSelectedClassId(uniqueClasses[0].id);
           }
           setLoading(false);
         })
@@ -171,10 +178,16 @@ export default function AttendanceWizardPage() {
             try {
               const data = JSON.parse(cached);
               setAssignments(data);
-              if (data.length > 0) {
-                setSelectedAssignmentId(data[0].id);
+              
+              const uniqueClasses = Array.from(
+                new Map(data.map((a: any) => [a.classId, { id: a.classId, name: a.class.name }])).values()
+              ) as Array<{ id: string, name: string }>;
+              
+              setClasses(uniqueClasses);
+              if (uniqueClasses.length > 0) {
+                setSelectedClassId(uniqueClasses[0].id);
               }
-              setError('Menggunakan daftar jadwal mengajar offline (Perangkat lokal).');
+              setError('Menggunakan daftar kelas offline (Perangkat lokal).');
             } catch (_) {
               setError(err instanceof Error ? err.message : 'Terjadi kesalahan');
             }
@@ -189,20 +202,20 @@ export default function AttendanceWizardPage() {
 
   // Fetch student attendance list when criteria changes
   const handleLoadSheet = async () => {
-    if (!selectedAssignmentId) {
-      setError('Harap pilih jadwal mata pelajaran terlebih dahulu.');
+    if (!selectedClassId) {
+      setError('Harap pilih kelas terlebih dahulu.');
       return;
     }
 
-    const assignment = assignments.find((a) => a.id === selectedAssignmentId);
-    if (!assignment) return;
+    const klass = classes.find((c) => c.id === selectedClassId);
+    if (!klass) return;
 
     setLoading(true);
     setError('');
     setSuccess('');
     
-    const cacheKey = `sipms_students_${assignment.classId}_${assignment.subjectId}`;
-    const dateCacheKey = `sipms_attendance_${assignment.classId}_${assignment.subjectId}_${date}_${periodTime}`;
+    const cacheKey = `sipms_students_${selectedClassId}`;
+    const dateCacheKey = `sipms_attendance_${selectedClassId}_${date}`;
     
     try {
       if (!navigator.onLine) {
@@ -234,10 +247,8 @@ export default function AttendanceWizardPage() {
 
       // Online behavior
       const params = new URLSearchParams({
-        classId: assignment.classId,
-        subjectId: assignment.subjectId,
+        classId: selectedClassId,
         date: date,
-        periodTime: periodTime,
       });
 
       const res = await fetch(`/api/teacher/attendance?${params.toString()}`);
@@ -285,7 +296,10 @@ export default function AttendanceWizardPage() {
     setError('');
     setSuccess('');
 
-    const assignment = assignments.find((a) => a.id === selectedAssignmentId);
+    if (!selectedClassId) return;
+
+    // Find assignment for active class to get academicYear & semester
+    const assignment = assignments.find((a) => a.classId === selectedClassId);
     if (!assignment) return;
 
     // Client-side validations
@@ -297,10 +311,8 @@ export default function AttendanceWizardPage() {
     }
 
     const payload = {
-      classId: assignment.classId,
-      subjectId: assignment.subjectId,
+      classId: selectedClassId,
       date,
-      periodTime,
       dayOfWeek,
       academicYear: assignment.academicYear,
       semester: assignment.semester,
@@ -313,7 +325,7 @@ export default function AttendanceWizardPage() {
     };
 
     // Cache local attendance state immediately on save
-    const dateCacheKey = `sipms_attendance_${assignment.classId}_${assignment.subjectId}_${date}_${periodTime}`;
+    const dateCacheKey = `sipms_attendance_${selectedClassId}_${date}`;
     localStorage.setItem(dateCacheKey, JSON.stringify(students));
 
     if (!navigator.onLine) {
@@ -322,19 +334,15 @@ export default function AttendanceWizardPage() {
         const queueJson = localStorage.getItem('sipms_offline_queue');
         const queue = queueJson ? JSON.parse(queueJson) : [];
         
-        // Check if this date/period is already in the queue to overwrite it
+        // Check if this date/class is already in the queue to overwrite it
         const existingIndex = queue.findIndex((item: any) => 
-          item.classId === assignment.classId && 
-          item.subjectId === assignment.subjectId && 
-          item.date === date && 
-          item.periodTime === periodTime
+          item.classId === selectedClassId && 
+          item.date === date
         );
 
         const queueItem = {
-          classId: assignment.classId,
-          subjectId: assignment.subjectId,
+          classId: selectedClassId,
           date,
-          periodTime,
           payload,
           timestamp: Date.now()
         };
@@ -378,7 +386,7 @@ export default function AttendanceWizardPage() {
     }
   };
 
-  const activeAssignment = assignments.find((a) => a.id === selectedAssignmentId);
+  const activeAssignment = assignments.find((a) => a.classId === selectedClassId);
 
   return (
     <div>
@@ -451,19 +459,19 @@ export default function AttendanceWizardPage() {
       <div className="glass" style={styles.wizardCard}>
         <div style={styles.filterForm}>
           <div className="form-group" style={{ ...styles.filterCol, flexGrow: 2 }}>
-            <label className="form-label">Mata Pelajaran & Kelas Mengajar</label>
+            <label className="form-label">Pilih Kelas</label>
             <select
               className="form-input"
-              value={selectedAssignmentId}
-              onChange={(e) => setSelectedAssignmentId(e.target.value)}
-              disabled={loading || assignments.length === 0}
+              value={selectedClassId}
+              onChange={(e) => setSelectedClassId(e.target.value)}
+              disabled={loading || classes.length === 0}
             >
-              {assignments.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.subject.name} ({a.subject.code}) - {a.class.name} [T.A. {a.academicYear} - {a.semester}]
+              {classes.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
                 </option>
               ))}
-              {assignments.length === 0 && <option value="">-- Tidak ada jadwal mengajar terdaftar --</option>}
+              {classes.length === 0 && <option value="">-- Tidak ada kelas terdaftar --</option>}
             </select>
           </div>
 
@@ -478,26 +486,11 @@ export default function AttendanceWizardPage() {
             />
           </div>
 
-          <div className="form-group" style={styles.filterCol}>
-            <label className="form-label">Jam Pelajaran</label>
-            <select
-              className="form-input"
-              value={periodTime}
-              onChange={(e) => setPeriodTime(e.target.value)}
-              disabled={loading}
-            >
-              <option value="1-2">Jam 1 - 2 (07.00 - 08.30)</option>
-              <option value="3-4">Jam 3 - 4 (08.30 - 10.00)</option>
-              <option value="5-6">Jam 5 - 6 (10.30 - 12.00)</option>
-              <option value="7-8">Jam 7 - 8 (12.30 - 14.00)</option>
-            </select>
-          </div>
-
           <button 
             onClick={handleLoadSheet} 
             className="btn btn-primary" 
             style={styles.loadBtn}
-            disabled={loading || assignments.length === 0}
+            disabled={loading || classes.length === 0}
           >
             <RefreshCw size={16} className={loading ? 'spin' : ''} /> Buka Form
           </button>

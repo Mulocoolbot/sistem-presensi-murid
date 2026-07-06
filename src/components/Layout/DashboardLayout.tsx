@@ -138,7 +138,11 @@ export default function DashboardLayout({ children, requiredRole }: DashboardLay
       <button 
         className="dashboard-mobile-btn glass"
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        style={{ color: 'var(--foreground)' }}
+        style={{ 
+          color: 'var(--foreground)',
+          left: sidebarOpen ? '224px' : '16px',
+          transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
       >
         {sidebarOpen ? <X size={22} /> : <Menu size={22} />}
       </button>

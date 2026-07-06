@@ -141,8 +141,8 @@ export async function GET(request: NextRequest) {
         date: a.date,
         periodTime: a.periodTime,
         className: a.class.name,
-        subjectName: a.subject.name,
-        subjectCode: a.subject.code,
+        subjectName: a.subject?.name || 'Presensi Harian',
+        subjectCode: a.subject?.code || 'DAILY',
         details: a.details.map((d) => ({
           studentName: d.student.fullName,
           status: d.status,

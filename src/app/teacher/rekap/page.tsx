@@ -44,7 +44,6 @@ export default function RekapAttendancePage() {
   const [subjects, setSubjects] = useState<SubjectOption[]>([]);
   
   const [classId, setClassId] = useState('');
-  const [subjectId, setSubjectId] = useState('');
   const [academicYear, setAcademicYear] = useState('2025/2026');
   const [semester, setSemester] = useState('Ganjil');
 
@@ -63,13 +62,6 @@ export default function RekapAttendancePage() {
         const classData = await classRes.json();
         setClasses(classData);
         if (classData.length > 0) setClassId(classData[0].id);
-      }
-      
-      // Fetch subjects
-      const subRes = await fetch('/api/school-admin/subjects');
-      if (subRes.ok) {
-        const subData = await subRes.json();
-        setSubjects(subData);
       }
     } catch (e) {
       console.error(e);
@@ -90,7 +82,6 @@ export default function RekapAttendancePage() {
     try {
       const params = new URLSearchParams();
       if (classId) params.append('classId', classId);
-      if (subjectId) params.append('subjectId', subjectId);
       if (academicYear) params.append('academicYear', academicYear);
       if (semester) params.append('semester', semester);
 
@@ -114,7 +105,6 @@ export default function RekapAttendancePage() {
   };
 
   const selectedClass = classes.find((c) => c.id === classId);
-  const selectedSubject = subjects.find((s) => s.id === subjectId);
 
   return (
     <div className="rekap-container">
@@ -154,15 +144,7 @@ export default function RekapAttendancePage() {
             </select>
           </div>
 
-          <div className="form-group" style={styles.filterCol}>
-            <label className="form-label">Mata Pelajaran (Opsional)</label>
-            <select className="form-input" value={subjectId} onChange={(e) => setSubjectId(e.target.value)}>
-              <option value="">Semua Mata Pelajaran</option>
-              {subjects.map((sub) => (
-                <option key={sub.id} value={sub.id}>{sub.name} ({sub.code})</option>
-              ))}
-            </select>
-          </div>
+
 
           <div className="form-group" style={styles.filterCol}>
             <label className="form-label">Tahun Ajaran</label>
@@ -201,7 +183,7 @@ export default function RekapAttendancePage() {
         <h4 style={{ marginTop: '8px' }}>SIPMS - SISTEM INFORMASI PRESENSI MURID SEKOLAH</h4>
         <div style={styles.printMetaInfo}>
           <div>Kelas: <strong>{selectedClass ? selectedClass.name : 'Semua Kelas'}</strong></div>
-          <div>Mata Pelajaran: <strong>{selectedSubject ? selectedSubject.name : 'Semua Mapel'}</strong></div>
+          <div>Jenis Presensi: <strong>Presensi Harian (Sekali Sehari)</strong></div>
           <div>Periode: <strong>T.A. {academicYear} - Semester {semester}</strong></div>
           <div>Tanggal Cetak: <strong>{new Date().toLocaleDateString('id-ID')}</strong></div>
         </div>

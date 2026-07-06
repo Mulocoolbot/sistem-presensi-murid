@@ -21,12 +21,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     
     const classId = searchParams.get('classId') || '';
-    const subjectId = searchParams.get('subjectId') || '';
     const dateStr = searchParams.get('date') || '';
-    const periodTime = searchParams.get('periodTime') || '';
 
-    if (!classId || !subjectId || !dateStr || !periodTime) {
-      return NextResponse.json({ error: 'Missing classId, subjectId, date, or periodTime' }, { status: 400 });
+    if (!classId || !dateStr) {
+      return NextResponse.json({ error: 'Missing classId or date' }, { status: 400 });
     }
 
     const date = new Date(dateStr);
@@ -48,9 +46,7 @@ export async function GET(request: NextRequest) {
       where: {
         schoolId: tenant.schoolId,
         classId,
-        subjectId,
-        date,
-        periodTime
+        date
       },
       include: {
         details: true
@@ -90,16 +86,14 @@ export async function POST(request: NextRequest) {
     const tenant = getTenantFilter(session!);
     const { 
       classId, 
-      subjectId, 
       date: dateStr, 
-      periodTime, 
       dayOfWeek, 
       academicYear, 
       semester, 
       students 
     } = await request.json();
 
-    if (!classId || !subjectId || !dateStr || !periodTime || !dayOfWeek || !academicYear || !semester || !students) {
+    if (!classId || !dateStr || !dayOfWeek || !academicYear || !semester || !students) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
     }
 
@@ -124,9 +118,7 @@ export async function POST(request: NextRequest) {
         where: {
           schoolId: tenant.schoolId,
           classId,
-          subjectId,
-          date: compareInput,
-          periodTime
+          date: compareInput
         }
       });
 
@@ -140,12 +132,10 @@ export async function POST(request: NextRequest) {
           data: {
             schoolId: tenant.schoolId,
             classId,
-            subjectId,
             teacherId: session!.userId,
             academicYear,
             semester,
             date: compareInput,
-            periodTime,
             dayOfWeek
           }
         });
@@ -193,7 +183,7 @@ export async function POST(request: NextRequest) {
       schoolId: tenant.schoolId,
       username: session!.username,
       role: session!.role,
-      action: `Post/Update Student Attendance - Date: ${dateStr}, Period: ${periodTime}`,
+      action: `Post/Update Student Daily Attendance - Date: ${dateStr}, Class ID: ${classId}`,
       request,
       beforeData: result.beforeData,
       afterData: result.afterData

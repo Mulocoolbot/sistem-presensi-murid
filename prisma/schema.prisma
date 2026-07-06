@@ -188,21 +188,21 @@ model Attendance {
   school       School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
   classId      String
   class        Class    @relation(fields: [classId], references: [id], onDelete: Cascade)
-  subjectId    String
-  subject      Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subjectId    String?
+  subject      Subject? @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   teacherId    String
   teacher      User     @relation(fields: [teacherId], references: [id])
   academicYear String
   semester     String
   date         DateTime
-  periodTime   String   // e.g., "1-2" (Jam Pelajaran)
+  periodTime   String?  // e.g., "1-2" (Jam Pelajaran)
   dayOfWeek    String   // e.g., "Senin"
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   details AttendanceDetail[]
 
-  @@unique([schoolId, classId, subjectId, date, periodTime])
+  @@unique([schoolId, classId, date])
 }
 
 model AttendanceDetail {
