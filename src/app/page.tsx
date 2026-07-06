@@ -36,7 +36,7 @@ export default function Home() {
             <Link href="/login" className="btn btn-primary" style={{ height: '48px', fontSize: '1rem', padding: '0 24px' }}>
               Masuk ke Aplikasi
             </Link>
-            <Link href="/register/admin" className="btn btn-secondary" style={{ height: '48px', fontSize: '1rem', padding: '0 24px' }}>
+            <Link href="/register/admin?from=landing" className="btn btn-secondary" style={{ height: '48px', fontSize: '1rem', padding: '0 24px' }}>
               Daftarkan Sekolah Baru
             </Link>
           </div>

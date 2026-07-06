@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { School, User, Mail, Phone, Lock, FileText, ArrowLeft, CheckCircle, ShieldAlert } from 'lucide-react';
 
@@ -12,7 +12,18 @@ interface SchoolOption {
 }
 
 export default function RegisterTeacherPage() {
+  return (
+    <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', color: 'var(--foreground)' }}>Memuat...</div>}>
+      <RegisterTeacherForm />
+    </Suspense>
+  );
+}
+
+function RegisterTeacherForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromParam = searchParams.get('from');
+  const backUrl = fromParam === 'landing' ? '/' : '/login';
 
   const [schools, setSchools] = useState<SchoolOption[]>([]);
   const [selectedSchoolId, setSelectedSchoolId] = useState('');
@@ -123,7 +134,7 @@ export default function RegisterTeacherPage() {
           </div>
           <h1 style={styles.title}>Registrasi Berhasil</h1>
           <p style={{ ...styles.subtitle, margin: '15px 0 25px 0' }}>
-            Data pendaftaran Guru telah kami terima. Akun Anda saat ini berstatus Pending dan sedang menunggu verifikasi oleh Admin Sekolah terkait.
+            Data pendaftaran Guru telah kami terima dan masuk ke dalam antrean verifikasi Admin Sekolah tujuan Anda. Anda dapat masuk setelah disetujui.
           </p>
           <Link href="/login" className="btn btn-primary" style={{ width: '100%' }}>
             Kembali ke Login
@@ -140,7 +151,7 @@ export default function RegisterTeacherPage() {
 
       <div style={{ ...styles.loginCard, maxWidth: '600px' }} className="glass">
         <div style={styles.backLink}>
-          <Link href="/login" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem' }}>
+          <Link href={backUrl} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem' }}>
             <ArrowLeft size={16} /> Kembali
           </Link>
         </div>

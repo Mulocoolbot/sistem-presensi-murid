@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Lock, User, Eye, EyeOff, School, GraduationCap } from 'lucide-react';
+import { Lock, User, Eye, EyeOff, School, GraduationCap, ArrowLeft } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -79,6 +79,11 @@ export default function LoginPage() {
       <div style={styles.decorCircle2}></div>
       
       <div style={styles.loginCard} className="glass">
+        <div style={styles.backLink}>
+          <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', color: 'var(--muted)' }}>
+            <ArrowLeft size={16} /> Kembali ke Beranda
+          </Link>
+        </div>
         <div style={styles.header}>
           <div style={styles.logoBadge} className="gradient-bg">
             <GraduationCap size={32} color="#fff" />
@@ -145,7 +150,7 @@ export default function LoginPage() {
         </div>
 
         <div style={styles.registrationOptions}>
-          <Link href="/register/admin" style={styles.regCard}>
+          <Link href="/register/admin?from=login" style={styles.regCard}>
             <School size={20} style={styles.regIcon} />
             <div style={styles.regContent}>
               <div style={styles.regTitle}>Registrasi Admin Sekolah</div>
@@ -153,7 +158,7 @@ export default function LoginPage() {
             </div>
           </Link>
 
-          <Link href="/register/teacher" style={styles.regCard}>
+          <Link href="/register/teacher?from=login" style={styles.regCard}>
             <User size={20} style={styles.regIcon} />
             <div style={styles.regContent}>
               <div style={styles.regTitle}>Registrasi Guru</div>
@@ -205,6 +210,9 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 'var(--radius-lg)',
     zIndex: 10,
     boxShadow: 'var(--glass-shadow)',
+  },
+  backLink: {
+    marginBottom: '15px',
   },
   header: {
     textAlign: 'center',

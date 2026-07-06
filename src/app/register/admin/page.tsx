@@ -1,12 +1,23 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { School, User, Mail, Phone, Lock, FileText, ArrowLeft, CheckCircle } from 'lucide-react';
 
 export default function RegisterAdminPage() {
+  return (
+    <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', color: 'var(--foreground)' }}>Memuat...</div>}>
+      <RegisterAdminForm />
+    </Suspense>
+  );
+}
+
+function RegisterAdminForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromParam = searchParams.get('from');
+  const backUrl = fromParam === 'landing' ? '/' : '/login';
   
   const [fullName, setFullName] = useState('');
   const [nik, setNik] = useState('');
@@ -100,7 +111,7 @@ export default function RegisterAdminPage() {
 
       <div style={{ ...styles.loginCard, maxWidth: '600px' }} className="glass">
         <div style={styles.backLink}>
-          <Link href="/login" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem' }}>
+          <Link href={backUrl} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem' }}>
             <ArrowLeft size={16} /> Kembali
           </Link>
         </div>
