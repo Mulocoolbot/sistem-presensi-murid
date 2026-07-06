@@ -46,15 +46,32 @@ export default function DashboardLayout({ children, requiredRole }: DashboardLay
           return;
         }
         setUser(data.user);
+        // Cache user session
+        localStorage.setItem('sipms_cache_user', JSON.stringify(data.user));
         setLoading(false);
       })
       .catch(() => {
+        // Offline fallback
+        if (typeof window !== 'undefined' && !navigator.onLine) {
+          const cachedUserJson = localStorage.getItem('sipms_cache_user');
+          if (cachedUserJson) {
+            try {
+              const cachedUser = JSON.parse(cachedUserJson);
+              if (cachedUser && cachedUser.role === requiredRole) {
+                setUser(cachedUser);
+                setLoading(false);
+                return;
+              }
+            } catch (_) {}
+          }
+        }
         router.push('/login');
       });
   }, [router, requiredRole]);
 
   const handleLogout = async () => {
     try {
+      localStorage.removeItem('sipms_cache_user');
       await fetch('/api/auth/logout', { method: 'POST' });
       router.push('/login');
     } catch (err) {

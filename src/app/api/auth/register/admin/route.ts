@@ -14,6 +14,8 @@ export async function POST(request: NextRequest) {
     const email = formData.get('email') as string;
     const phone = formData.get('phone') as string;
     const schoolName = formData.get('schoolName') as string;
+    const schoolAddress = formData.get('schoolAddress') as string;
+    const schoolPhone = formData.get('schoolPhone') as string;
     const username = formData.get('username') as string;
     const password = formData.get('password') as string;
 
@@ -21,7 +23,7 @@ export async function POST(request: NextRequest) {
     const suratTugas = formData.get('suratTugas') as File | null;
 
     // Validate inputs
-    if (!fullName || !nik || !email || !phone || !schoolName || !username || !password) {
+    if (!fullName || !nik || !email || !phone || !schoolName || !schoolAddress || !schoolPhone || !username || !password) {
       return NextResponse.json({ error: 'All fields are required' }, { status: 400 });
     }
 
@@ -55,13 +57,13 @@ export async function POST(request: NextRequest) {
     });
 
     if (!school) {
-      // Create new school (starts as active by default)
+      // Create new school (starts as inactive by default, activated on admin approval)
       school = await db.school.create({
         data: {
           name: schoolName,
-          address: 'Alamat Sekolah Baru',
-          phone: '-',
-          status: true
+          address: schoolAddress,
+          phone: schoolPhone,
+          status: false
         }
       });
     }

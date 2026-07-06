@@ -24,6 +24,8 @@ function RegisterAdminForm() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [schoolName, setSchoolName] = useState('');
+  const [schoolAddress, setSchoolAddress] = useState('');
+  const [schoolPhone, setSchoolPhone] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   
@@ -39,7 +41,7 @@ function RegisterAdminForm() {
     setError('');
 
     // Validate inputs
-    if (!fullName || !nik || !email || !phone || !schoolName || !username || !password) {
+    if (!fullName || !nik || !email || !phone || !schoolName || !schoolAddress || !schoolPhone || !username || !password) {
       setError('Harap isi semua bidang input.');
       return;
     }
@@ -58,6 +60,8 @@ function RegisterAdminForm() {
       formData.append('email', email);
       formData.append('phone', phone);
       formData.append('schoolName', schoolName);
+      formData.append('schoolAddress', schoolAddress);
+      formData.append('schoolPhone', schoolPhone);
       formData.append('username', username);
       formData.append('password', password);
       formData.append('fotoKtp', fotoKtp);
@@ -186,6 +190,32 @@ function RegisterAdminForm() {
               onChange={(e) => setSchoolName(e.target.value)}
               disabled={loading}
             />
+          </div>
+
+          <div style={styles.row}>
+            <div className="form-group" style={styles.col}>
+              <label className="form-label"><School size={14} /> Alamat Sekolah</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g. Jl. Budi Utomo No.7, Jakarta"
+                value={schoolAddress}
+                onChange={(e) => setSchoolAddress(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+
+            <div className="form-group" style={styles.col}>
+              <label className="form-label"><Phone size={14} /> Nomor Telepon Sekolah</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g. 0213865001"
+                value={schoolPhone}
+                onChange={(e) => setSchoolPhone(e.target.value)}
+                disabled={loading}
+              />
+            </div>
           </div>
 
           <div style={styles.row}>

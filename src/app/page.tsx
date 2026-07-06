@@ -1,7 +1,45 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { GraduationCap, ShieldAlert, Award, FileText, ArrowRight, ShieldCheck, CheckSquare, Layers } from 'lucide-react';
+import { GraduationCap, ShieldAlert, Award, FileText, ArrowRight, ShieldCheck, CheckSquare, Layers, Download, X } from 'lucide-react';
 
 export default function Home() {
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isIos, setIsIos] = useState(false);
+  const [showIosGuide, setShowIosGuide] = useState(false);
+
+  useEffect(() => {
+    // Detect iOS
+    const ua = window.navigator.userAgent;
+    const ipad = !!ua.match(/iPad/i);
+    const iphone = !!ua.match(/iPhone/i);
+    if ((ipad || iphone) && !(window as any).MSStream) {
+      // Check if not already installed/standalone
+      if (!(window.navigator as any).standalone) {
+        setIsIos(true);
+      }
+    }
+
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`PWA install choice outcome: ${outcome}`);
+    setDeferredPrompt(null);
+  };
+
   return (
     <div style={styles.container}>
       <div style={styles.decorCircle1}></div>
@@ -36,11 +74,52 @@ export default function Home() {
             <Link href="/login" className="btn btn-primary" style={{ height: '48px', fontSize: '1rem', padding: '0 24px' }}>
               Masuk ke Aplikasi
             </Link>
+
+            {deferredPrompt && (
+              <button onClick={handleInstallClick} className="btn btn-success" style={{ height: '48px', fontSize: '1rem', padding: '0 24px', background: 'var(--success)', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Download size={18} /> Pasang Aplikasi (HP)
+              </button>
+            )}
+
+            {isIos && (
+              <button onClick={() => setShowIosGuide(true)} className="btn btn-success" style={{ height: '48px', fontSize: '1rem', padding: '0 24px', background: 'var(--success)', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Download size={18} /> Pasang di iPhone/iPad
+              </button>
+            )}
+
             <Link href="/register/admin?from=landing" className="btn btn-secondary" style={{ height: '48px', fontSize: '1rem', padding: '0 24px' }}>
               Daftarkan Sekolah Baru
             </Link>
           </div>
         </div>
+
+        {/* iOS installation guide modal */}
+        {showIosGuide && (
+          <div style={styles.modalOverlay}>
+            <div className="glass" style={styles.modalCard}>
+              <div style={styles.modalHeader}>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>Panduan Pasang Aplikasi di iPhone / iPad</h3>
+                <button onClick={() => setShowIosGuide(false)} style={styles.closeBtn}>
+                  <X size={20} />
+                </button>
+              </div>
+              <div style={{ marginTop: '15px', color: 'var(--foreground)' }}>
+                <p style={{ fontSize: '0.9rem', marginBottom: '15px', color: 'var(--muted)' }}>
+                  Ikuti langkah-langkah mudah di bawah ini untuk memasang aplikasi **SIPMS** langsung di layar utama iPhone atau iPad Anda:
+                </p>
+                <ol style={styles.iosSteps}>
+                  <li style={{ marginBottom: '8px', fontSize: '0.9rem' }}>Buka halaman ini menggunakan browser bawaan **Safari** di iPhone/iPad Anda.</li>
+                  <li style={{ marginBottom: '8px', fontSize: '0.9rem' }}>Ketuk tombol **Bagikan (Share)** yang berupa ikon kotak dengan panah ke atas di bagian bawah layar browser.</li>
+                  <li style={{ marginBottom: '8px', fontSize: '0.9rem' }}>Gulir ke bawah pada menu bagikan dan ketuk pilihan **Tambahkan ke Layar Utama (Add to Home Screen)**.</li>
+                  <li style={{ marginBottom: '8px', fontSize: '0.9rem' }}>Ketuk **Tambah (Add)** di sudut kanan atas untuk mengonfirmasi.</li>
+                </ol>
+                <p style={{ fontSize: '0.8rem', color: 'var(--muted)', marginTop: '20px', fontStyle: 'italic' }}>
+                  *Aplikasi SIPMS akan muncul langsung di layar utama perangkat iOS Anda seperti aplikasi biasa, dan siap diakses secara offline.*
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Feature Grid */}
         <div style={styles.featureGrid}>
@@ -233,6 +312,52 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '0.85rem',
     color: 'var(--muted)',
     zIndex: 10,
+  },
+  modalOverlay: {
+    position: 'fixed',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    background: 'rgba(0, 0, 0, 0.65)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+    padding: '20px',
+    backdropFilter: 'blur(6px)',
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: '520px',
+    background: 'var(--background-light, #12131e)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-lg)',
+    padding: '28px',
+    boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+    position: 'relative',
+  },
+  modalHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottom: '1px solid var(--border)',
+    paddingBottom: '12px',
+  },
+  closeBtn: {
+    background: 'none',
+    border: 'none',
+    color: 'var(--muted)',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iosSteps: {
+    marginLeft: '20px',
+    marginTop: '15px',
+    lineHeight: '1.8',
+    color: 'var(--foreground)',
   },
 };
 

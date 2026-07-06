@@ -59,6 +59,8 @@ export default function LoginPage() {
 
       // Check user role for routing
       const user = data.user;
+      localStorage.setItem('sipms_cache_user', JSON.stringify(user));
+      
       if (user.role === 'SUPER_ADMIN') {
         router.push('/super-admin');
       } else if (user.role === 'SCHOOL_ADMIN') {

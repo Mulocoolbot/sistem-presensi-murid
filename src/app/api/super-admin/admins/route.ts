@@ -59,6 +59,19 @@ export async function PUT(request: NextRequest) {
       include: { school: true }
     });
 
+    // If admin is approved (ACTIVE), also activate their school if it was inactive
+    if (status === 'ACTIVE' && updatedUser.schoolId) {
+      const associatedSchool = await db.school.findUnique({
+        where: { id: updatedUser.schoolId }
+      });
+      if (associatedSchool && !associatedSchool.status) {
+        await db.school.update({
+          where: { id: updatedUser.schoolId },
+          data: { status: true }
+        });
+      }
+    }
+
     // Log Activity
     await logActivity({
       userId: session.userId,
