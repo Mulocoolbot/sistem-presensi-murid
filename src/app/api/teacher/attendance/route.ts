@@ -136,8 +136,6 @@ export async function POST(request: NextRequest) {
             semester,
             date: compareInput,
             dayOfWeek,
-            subjectId: null,
-            periodTime: null
           }
         });
       } else {

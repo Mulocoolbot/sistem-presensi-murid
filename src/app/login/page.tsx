@@ -31,7 +31,7 @@ export default function LoginPage() {
           else if (role === 'TEACHER') router.push('/teacher');
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -60,7 +60,7 @@ export default function LoginPage() {
       // Check user role for routing
       const user = data.user;
       localStorage.setItem('sipms_cache_user', JSON.stringify(user));
-      
+
       if (user.role === 'SUPER_ADMIN') {
         router.push('/super-admin');
       } else if (user.role === 'SCHOOL_ADMIN') {
@@ -79,7 +79,7 @@ export default function LoginPage() {
     <div style={styles.container}>
       <div style={styles.decorCircle1}></div>
       <div style={styles.decorCircle2}></div>
-      
+
       <div style={styles.loginCard} className="glass">
         <div style={styles.backLink}>
           <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', color: 'var(--muted)' }}>
