@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Users, Plus, Edit, Trash2, RefreshCw, X, ShieldAlert, FileText, Search, ExternalLink, Eye } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, RefreshCw, X, ShieldAlert, Search, ExternalLink, Eye } from 'lucide-react';
 
 interface ClassOption {
   id: string;

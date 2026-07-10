@@ -190,8 +190,8 @@ export async function restoreBackup(backupId: string): Promise<boolean> {
     // If it's a student backup, restore the student
     if (data.entity === 'Student') {
       const { student } = data;
-      // Remove relationships to prevent issues with foreign keys
-      const { attendanceDetails: _attendanceDetails, ...studentFields } = student;
+      const studentFields = { ...student };
+      delete (studentFields as { attendanceDetails?: unknown }).attendanceDetails;
       
       // Upsert student
       await db.student.upsert({
@@ -205,7 +205,8 @@ export async function restoreBackup(backupId: string): Promise<boolean> {
     // If it's a class backup, restore class and its students
     if (data.entity === 'Class') {
       const { class: classObj } = data;
-      const { students, teacherSubjectClasses: _teacherSubjectClasses, ...classFields } = classObj;
+      const { students, ...classFields } = classObj;
+      delete (classFields as { teacherSubjectClasses?: unknown }).teacherSubjectClasses;
 
       await db.class.upsert({
         where: { id: classFields.id },
@@ -227,7 +228,9 @@ export async function restoreBackup(backupId: string): Promise<boolean> {
     // If it's a teacher backup
     if (data.entity === 'Teacher') {
       const { teacher } = data;
-      const { documents: _documents, teacherSubjectClasses: _teacherSubjectClasses, ...teacherFields } = teacher;
+      const teacherFields = { ...teacher };
+      delete (teacherFields as { documents?: unknown }).documents;
+      delete (teacherFields as { teacherSubjectClasses?: unknown }).teacherSubjectClasses;
 
       await db.user.upsert({
         where: { id: teacherFields.id },
@@ -250,7 +253,8 @@ export async function restoreBackup(backupId: string): Promise<boolean> {
 
       // 2. Restore Users
       for (const user of users) {
-        const { documents: _documents, ...userFields } = user;
+        const userFields = { ...user };
+        delete (userFields as { documents?: unknown }).documents;
         await db.user.upsert({
           where: { id: user.id },
           update: userFields,

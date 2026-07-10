@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Award, Layers, Users, BookOpen, Clock, ShieldAlert, FileBarChart, RefreshCw } from 'lucide-react';
+import { Award, Layers, Users, BookOpen, Clock, ShieldAlert, RefreshCw } from 'lucide-react';
 
 interface KepsekStats {
   totalStudents: number;

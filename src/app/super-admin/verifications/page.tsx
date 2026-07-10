@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { UserCheck, ShieldAlert, FileText, Check, X, RefreshCw, ExternalLink } from 'lucide-react';
+import { UserCheck, ShieldAlert, FileText, RefreshCw, ExternalLink } from 'lucide-react';
 
 interface AdminDocument {
   id: string;

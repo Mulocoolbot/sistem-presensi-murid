@@ -42,6 +42,13 @@ interface QueueItem {
   timestamp: number;
 }
 
+interface CachedStudent {
+  id: string;
+  nis: string;
+  fullName: string;
+  gender: string;
+}
+
 export default function AttendanceWizardPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [classes, setClasses] = useState<Array<{ id: string; name: string }>>([]);
@@ -66,7 +73,19 @@ export default function AttendanceWizardPage() {
 
   // PWA & Offline states
   const [isOnline, setIsOnline] = useState(() => typeof window !== 'undefined' ? navigator.onLine : true);
-  const [offlineQueueLength, setOfflineQueueLength] = useState(0);
+  const [offlineQueueLength, setOfflineQueueLength] = useState(() => {
+    if (typeof window === 'undefined') return 0;
+    const queueJson = localStorage.getItem('sipms_offline_queue');
+    if (queueJson) {
+      try {
+        const queue = JSON.parse(queueJson) as QueueItem[];
+        return Array.isArray(queue) ? queue.length : 0;
+      } catch {
+        return 0;
+      }
+    }
+    return 0;
+  });
   const handleDateChange = (val: string) => {
     setDate(val);
     setDayOfWeek(getIndonesianDayName(val));
@@ -82,7 +101,7 @@ export default function AttendanceWizardPage() {
     }
     
     try {
-      const queue = JSON.parse(queueJson);
+      const queue = JSON.parse(queueJson) as QueueItem[];
       if (!Array.isArray(queue) || queue.length === 0) {
         setOfflineQueueLength(0);
         return;
@@ -93,7 +112,7 @@ export default function AttendanceWizardPage() {
       setSuccess('Sinkronisasi data offline sedang berjalan...');
       
       let successfulCount = 0;
-      const failedItems: any[] = [];
+      const failedItems: QueueItem[] = [];
       
       for (const item of queue) {
         try {
@@ -105,7 +124,7 @@ export default function AttendanceWizardPage() {
           if (res.ok) {
             successfulCount++;
           } else {
-            const data = await res.json();
+            const data = (await res.json()) as { error?: string };
             console.error('Gagal menyinkronkan item:', data.error || res.statusText);
             failedItems.push(item);
           }
@@ -143,19 +162,6 @@ export default function AttendanceWizardPage() {
       }
     };
 
-    setIsOnline(navigator.onLine);
-    
-    // Check initial queue length
-    const queueJson = localStorage.getItem('sipms_offline_queue');
-    if (queueJson) {
-      try {
-        const queue = JSON.parse(queueJson);
-        if (Array.isArray(queue)) {
-          setOfflineQueueLength(queue.length);
-        }
-      } catch (_) {}
-    }
-
     window.addEventListener('online', updateOnlineStatus);
     window.addEventListener('offline', updateOnlineStatus);
     return () => {
@@ -171,7 +177,7 @@ export default function AttendanceWizardPage() {
       fetch('/api/school-admin/teacher-subjects')
         .then((res) => {
           if (!res.ok) throw new Error('Gagal mengambil daftar tugas mengajar');
-          return res.json();
+          return res.json() as Promise<Assignment[]>;
         })
         .then((data) => {
           setAssignments(data);
@@ -180,7 +186,7 @@ export default function AttendanceWizardPage() {
           
           // Extract unique classes
           const uniqueClasses = Array.from(
-            new Map(data.map((a: any) => [a.classId, { id: a.classId, name: a.class.name }])).values()
+            new Map(data.map((a: Assignment) => [a.classId, { id: a.classId, name: a.class.name }])).values()
           ) as Array<{ id: string, name: string }>;
           
           setClasses(uniqueClasses);
@@ -194,11 +200,11 @@ export default function AttendanceWizardPage() {
           const cached = localStorage.getItem('sipms_cached_assignments');
           if (cached) {
             try {
-              const data = JSON.parse(cached);
+              const data = JSON.parse(cached) as Assignment[];
               setAssignments(data);
               
               const uniqueClasses = Array.from(
-                new Map(data.map((a: any) => [a.classId, { id: a.classId, name: a.class.name }])).values()
+                new Map(data.map((a: Assignment) => [a.classId, { id: a.classId, name: a.class.name }])).values()
               ) as Array<{ id: string, name: string }>;
               
               setClasses(uniqueClasses);
@@ -206,7 +212,7 @@ export default function AttendanceWizardPage() {
                 setSelectedClassId(uniqueClasses[0].id);
               }
               setError('Menggunakan daftar kelas offline (Perangkat lokal).');
-            } catch (_) {
+            } catch {
               setError(err instanceof Error ? err.message : 'Terjadi kesalahan');
             }
           } else {
@@ -240,17 +246,20 @@ export default function AttendanceWizardPage() {
         // Load from local cache if offline
         const cached = localStorage.getItem(cacheKey);
         if (cached) {
-          const cachedStudents = JSON.parse(cached);
+          const cachedStudents = JSON.parse(cached) as CachedStudent[];
           const cachedAttendance = localStorage.getItem(dateCacheKey);
           
           if (cachedAttendance) {
-            setStudents(JSON.parse(cachedAttendance));
+            setStudents(JSON.parse(cachedAttendance) as StudentAttendance[]);
             setSuccess('Memuat lembar presensi yang tersimpan lokal (Offline).');
           } else {
             // Set all to default HADIR
-            const defaultStudents = cachedStudents.map((s: any) => ({
-              ...s,
-              attendanceStatus: 'HADIR',
+            const defaultStudents = cachedStudents.map((s: CachedStudent) => ({
+              id: s.id,
+              nis: s.nis,
+              fullName: s.fullName,
+              gender: s.gender,
+              attendanceStatus: 'HADIR' as const,
               note: ''
             }));
             setStudents(defaultStudents);
@@ -270,13 +279,13 @@ export default function AttendanceWizardPage() {
       });
 
       const res = await fetch(`/api/teacher/attendance?${params.toString()}`);
-      const data = await res.json();
+      const data = (await res.json()) as { error?: string; students: StudentAttendance[] };
       if (!res.ok) throw new Error(data.error || 'Gagal memuat form presensi');
 
       setStudents(data.students);
       
       // Cache students list (basic student info)
-      const baseStudents = data.students.map((s: any) => ({
+      const baseStudents: CachedStudent[] = data.students.map((s: StudentAttendance) => ({
         id: s.id,
         nis: s.nis,
         fullName: s.fullName,
@@ -350,15 +359,15 @@ export default function AttendanceWizardPage() {
       // Save offline
       try {
         const queueJson = localStorage.getItem('sipms_offline_queue');
-        const queue = queueJson ? JSON.parse(queueJson) : [];
+        const queue = queueJson ? (JSON.parse(queueJson) as QueueItem[]) : [];
         
         // Check if this date/class is already in the queue to overwrite it
-        const existingIndex = queue.findIndex((item: any) => 
+        const existingIndex = queue.findIndex((item: QueueItem) => 
           item.classId === selectedClassId && 
           item.date === date
         );
 
-        const queueItem = {
+        const queueItem: QueueItem = {
           classId: selectedClassId,
           date,
           payload,
@@ -392,7 +401,7 @@ export default function AttendanceWizardPage() {
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
+      const data = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(data.error || 'Gagal menyimpan presensi');
 
       setSuccess('Presensi berhasil disimpan!');

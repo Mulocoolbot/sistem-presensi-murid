@@ -62,7 +62,9 @@ export default function DashboardLayout({ children, requiredRole }: DashboardLay
                 setLoading(false);
                 return;
               }
-            } catch (_) {}
+            } catch {
+              // Ignore parse errors
+            }
           }
         }
         router.push('/login');

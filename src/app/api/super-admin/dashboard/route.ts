@@ -3,7 +3,7 @@ import { protectApi } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  const { session, errorResponse } = await protectApi(['SUPER_ADMIN']);
+  const { errorResponse } = await protectApi(['SUPER_ADMIN']);
   if (errorResponse) return errorResponse;
 
   try {

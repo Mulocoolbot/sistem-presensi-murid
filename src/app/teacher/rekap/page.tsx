@@ -8,12 +8,6 @@ interface ClassOption {
   name: string;
 }
 
-interface SubjectOption {
-  id: string;
-  name: string;
-  code: string;
-}
-
 interface StudentRekap {
   studentId: string;
   nis: string;
@@ -41,7 +35,6 @@ interface Summary {
 
 export default function RekapAttendancePage() {
   const [classes, setClasses] = useState<ClassOption[]>([]);
-  const [subjects, setSubjects] = useState<SubjectOption[]>([]);
   
   const [classId, setClassId] = useState('');
   const [academicYear, setAcademicYear] = useState('2025/2026');

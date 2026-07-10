@@ -564,7 +564,7 @@ async function main() {
         userId: log.userId,
         schoolId: log.schoolId,
         username: log.username,
-        role: log.role as any,
+        role: log.role as Role,
         action: log.action,
         ipAddress: log.ipAddress,
         deviceType: log.deviceType,

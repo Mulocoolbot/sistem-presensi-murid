@@ -3,7 +3,7 @@ import { protectApi, getTenantFilter } from '@/lib/auth';
 import { logActivity } from '@/lib/activityLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   const { session, errorResponse } = await protectApi(['SCHOOL_ADMIN']);
   if (errorResponse) return errorResponse;
 

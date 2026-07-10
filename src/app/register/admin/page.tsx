@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { School, User, Mail, Phone, Lock, FileText, ArrowLeft, CheckCircle } from 'lucide-react';
 
@@ -14,7 +14,6 @@ export default function RegisterAdminPage() {
 }
 
 function RegisterAdminForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const fromParam = searchParams.get('from');
   const backUrl = fromParam === 'landing' ? '/' : '/login';

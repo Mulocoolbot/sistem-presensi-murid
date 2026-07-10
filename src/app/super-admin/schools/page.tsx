@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { School, Users, ShieldAlert, Plus, Edit, Trash2, RefreshCw, X } from 'lucide-react';
+import { School, ShieldAlert, Plus, Edit, Trash2, RefreshCw, X } from 'lucide-react';
 
 interface SchoolData {
   id: string;

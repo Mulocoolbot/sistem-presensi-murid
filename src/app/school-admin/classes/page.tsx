@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Layers, Edit, Trash2, RefreshCw, X, ShieldAlert } from 'lucide-react';
+import { Layers, RefreshCw, X, ShieldAlert } from 'lucide-react';
 
 interface Teacher {
   id: string;

@@ -2,28 +2,30 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { GraduationCap, ShieldAlert, Award, FileText, ArrowRight, ShieldCheck, CheckSquare, Layers, Download, X } from 'lucide-react';
+import { GraduationCap, Award, FileText, ArrowRight, ShieldCheck, CheckSquare, Layers, Download, X } from 'lucide-react';
+
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
 
 export default function Home() {
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [isIos, setIsIos] = useState(false);
-  const [showIosGuide, setShowIosGuide] = useState(false);
-
-  useEffect(() => {
-    // Detect iOS
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isIos] = useState(() => {
+    if (typeof window === 'undefined') return false;
     const ua = window.navigator.userAgent;
     const ipad = !!ua.match(/iPad/i);
     const iphone = !!ua.match(/iPhone/i);
-    if ((ipad || iphone) && !(window as any).MSStream) {
-      // Check if not already installed/standalone
-      if (!(window.navigator as any).standalone) {
-        setIsIos(true);
-      }
-    }
+    const hasMSStream = 'MSStream' in window;
+    const isStandalone = (window.navigator as Navigator & { standalone?: boolean }).standalone;
+    return (ipad || iphone) && !hasMSStream && !isStandalone;
+  });
+  const [showIosGuide, setShowIosGuide] = useState(false);
 
+  useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e);
+      setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);

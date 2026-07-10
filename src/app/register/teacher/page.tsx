@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { School, User, Mail, Phone, Lock, FileText, ArrowLeft, CheckCircle, ShieldAlert } from 'lucide-react';
 
@@ -20,7 +20,6 @@ export default function RegisterTeacherPage() {
 }
 
 function RegisterTeacherForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const fromParam = searchParams.get('from');
   const backUrl = fromParam === 'landing' ? '/' : '/login';
