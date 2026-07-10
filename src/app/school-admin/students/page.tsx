@@ -90,66 +90,138 @@ export default function StudentsManagementPage() {
     setImportFile(file);
     setImportError('');
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const text = event.target?.result as string;
-        const lines = text.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
-        if (lines.length <= 1) {
-          throw new Error('File CSV kosong atau tidak memiliki data.');
+    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+
+    if (isExcel) {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const arrayBuffer = event.target?.result as ArrayBuffer;
+          const { read, utils } = await import('xlsx');
+          const workbook = read(arrayBuffer, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const rawData = utils.sheet_to_json<unknown[]>(worksheet, { header: 1 });
+          
+          if (rawData.length <= 1) {
+            throw new Error('File Excel kosong atau tidak memiliki data.');
+          }
+
+          const headers = (rawData[0] as unknown[]).map(h => String(h || '').trim().toLowerCase());
+          const parsedStudents: ImportedStudent[] = [];
+
+          for (let i = 1; i < rawData.length; i++) {
+            const row = rawData[i] as unknown[];
+            if (!row || row.length === 0) continue;
+            
+            const studentMap: Record<string, string> = {};
+            headers.forEach((header, idx) => {
+              if (header) {
+                studentMap[header] = row[idx] !== undefined && row[idx] !== null ? String(row[idx]).trim() : '';
+              }
+            });
+
+            const studentObj: ImportedStudent = {
+              nis: studentMap.nis || '',
+              nisn: studentMap.nisn || '',
+              fullName: studentMap.nama || studentMap.name || studentMap.fullname || '',
+              gender: (studentMap.gender || studentMap.kelamin || studentMap.sex || studentMap.jk || '').toUpperCase(),
+              className: studentMap.kelas || studentMap.class || '',
+              phone: studentMap.telepon || studentMap.phone || studentMap.hp || '',
+              address: studentMap.alamat || studentMap.address || '',
+              guardianName: studentMap.wali || studentMap.parent || studentMap.parentname || '',
+            };
+
+            if (!studentObj.nis && !studentObj.nisn && !studentObj.fullName) {
+              continue;
+            }
+
+            if (!studentObj.nis || !studentObj.nisn || !studentObj.fullName || !studentObj.gender || !studentObj.className) {
+              throw new Error(`Baris ${i + 1} tidak lengkap. Kolom wajib: NIS, NISN, Nama, Gender (L/P), dan Kelas.`);
+            }
+
+            if (studentObj.gender !== 'L' && studentObj.gender !== 'P') {
+              throw new Error(`Baris ${i + 1}: Gender harus L (Laki-laki) atau P (Perempuan), ditemukan: "${studentObj.gender}".`);
+            }
+
+            const matchedClass = classes.find(c => c.name.toLowerCase() === studentObj.className.toLowerCase());
+            if (!matchedClass) {
+              throw new Error(`Baris ${i + 1}: Kelas "${studentObj.className}" tidak ditemukan di database. Pastikan nama kelas persis sama.`);
+            }
+            studentObj.classId = matchedClass.id;
+            studentObj.classNameMatched = matchedClass.name;
+
+            parsedStudents.push(studentObj);
+          }
+
+          setImportPreview(parsedStudents);
+        } catch (err: unknown) {
+          setImportError(err instanceof Error ? err.message : 'Gagal memproses file Excel.');
+          setImportPreview([]);
         }
-
-        const delimiter = lines[0].includes(';') ? ';' : ',';
-        const headers = lines[0].split(delimiter).map(h => h.trim().replace(/^["']|["']$/g, '').toLowerCase());
-        
-        const parsedStudents: ImportedStudent[] = [];
-        
-        for (let i = 1; i < lines.length; i++) {
-          const cols = lines[i].split(delimiter).map(c => c.trim().replace(/^["']|["']$/g, ''));
-          if (cols.length < 5) continue;
-
-          const studentMap: Record<string, string> = {};
-          headers.forEach((header, idx) => {
-            studentMap[header] = cols[idx] || '';
-          });
-
-          // Extract values safely with fallbacks
-          const studentObj: ImportedStudent = {
-            nis: studentMap.nis || '',
-            nisn: studentMap.nisn || '',
-            fullName: studentMap.nama || studentMap.name || studentMap.fullname || '',
-            gender: (studentMap.gender || studentMap.kelamin || studentMap.sex || studentMap.jk || '').toUpperCase(),
-            className: studentMap.kelas || studentMap.class || '',
-            phone: studentMap.telepon || studentMap.phone || studentMap.hp || '',
-            address: studentMap.alamat || studentMap.address || '',
-            guardianName: studentMap.wali || studentMap.parent || studentMap.parentname || '',
-          };
-
-          if (!studentObj.nis || !studentObj.nisn || !studentObj.fullName || !studentObj.gender || !studentObj.className) {
-            throw new Error(`Baris ${i + 1} tidak lengkap. Kolom wajib: NIS, NISN, Nama, Gender (L/P), dan Kelas.`);
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const text = event.target?.result as string;
+          const lines = text.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+          if (lines.length <= 1) {
+            throw new Error('File CSV kosong atau tidak memiliki data.');
           }
 
-          if (studentObj.gender !== 'L' && studentObj.gender !== 'P') {
-            throw new Error(`Baris ${i + 1}: Gender harus L (Laki-laki) atau P (Perempuan), ditemukan: "${studentObj.gender}".`);
+          const delimiter = lines[0].includes(';') ? ';' : ',';
+          const headers = lines[0].split(delimiter).map(h => h.trim().replace(/^["']|["']$/g, '').toLowerCase());
+          
+          const parsedStudents: ImportedStudent[] = [];
+          
+          for (let i = 1; i < lines.length; i++) {
+            const cols = lines[i].split(delimiter).map(c => c.trim().replace(/^["']|["']$/g, ''));
+            if (cols.length < 5) continue;
+
+            const studentMap: Record<string, string> = {};
+            headers.forEach((header, idx) => {
+              studentMap[header] = cols[idx] || '';
+            });
+
+            const studentObj: ImportedStudent = {
+              nis: studentMap.nis || '',
+              nisn: studentMap.nisn || '',
+              fullName: studentMap.nama || studentMap.name || studentMap.fullname || '',
+              gender: (studentMap.gender || studentMap.kelamin || studentMap.sex || studentMap.jk || '').toUpperCase(),
+              className: studentMap.kelas || studentMap.class || '',
+              phone: studentMap.telepon || studentMap.phone || studentMap.hp || '',
+              address: studentMap.alamat || studentMap.address || '',
+              guardianName: studentMap.wali || studentMap.parent || studentMap.parentname || '',
+            };
+
+            if (!studentObj.nis || !studentObj.nisn || !studentObj.fullName || !studentObj.gender || !studentObj.className) {
+              throw new Error(`Baris ${i + 1} tidak lengkap. Kolom wajib: NIS, NISN, Nama, Gender (L/P), dan Kelas.`);
+            }
+
+            if (studentObj.gender !== 'L' && studentObj.gender !== 'P') {
+              throw new Error(`Baris ${i + 1}: Gender harus L (Laki-laki) atau P (Perempuan), ditemukan: "${studentObj.gender}".`);
+            }
+
+            const matchedClass = classes.find(c => c.name.toLowerCase() === studentObj.className.toLowerCase());
+            if (!matchedClass) {
+              throw new Error(`Baris ${i + 1}: Kelas "${studentObj.className}" tidak ditemukan di database. Pastikan nama kelas persis sama.`);
+            }
+            studentObj.classId = matchedClass.id;
+            studentObj.classNameMatched = matchedClass.name;
+
+            parsedStudents.push(studentObj);
           }
 
-          const matchedClass = classes.find(c => c.name.toLowerCase() === studentObj.className.toLowerCase());
-          if (!matchedClass) {
-            throw new Error(`Baris ${i + 1}: Kelas "${studentObj.className}" tidak ditemukan di database. Pastikan nama kelas persis sama.`);
-          }
-          studentObj.classId = matchedClass.id;
-          studentObj.classNameMatched = matchedClass.name;
-
-          parsedStudents.push(studentObj);
+          setImportPreview(parsedStudents);
+        } catch (err: unknown) {
+          setImportError(err instanceof Error ? err.message : 'Gagal memproses file CSV.');
+          setImportPreview([]);
         }
-
-        setImportPreview(parsedStudents);
-      } catch (err: unknown) {
-        setImportError(err instanceof Error ? err.message : 'Gagal memproses file CSV.');
-        setImportPreview([]);
-      }
-    };
-    reader.readAsText(file);
+      };
+      reader.readAsText(file);
+    }
   };
 
   const handleSaveImport = async () => {
@@ -192,6 +264,34 @@ export default function StudentsManagementPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const downloadExcelSample = async () => {
+    try {
+      const { utils, write } = await import('xlsx');
+      const headers = ["nis", "nisn", "nama", "gender", "kelas", "telepon", "alamat", "wali"];
+      const data = [
+        headers,
+        ["10001", "0091234567", "Ahmad Fauzi", "L", "Kelas 10-A", "08123456789", "Jl. Mawar No.1", "Budi Fauzi"],
+        ["10002", "0097654321", "Siti Aminah", "P", "Kelas 10-A", "08129876543", "Jl. Melati No.2", "Hasan Aminah"]
+      ];
+      
+      const worksheet = utils.aoa_to_sheet(data);
+      const workbook = utils.book_new();
+      utils.book_append_sheet(workbook, worksheet, "Template Siswa");
+      
+      const excelBuffer = write(workbook, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
+      const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute("download", "template_impor_siswa.xlsx");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch {
+      setImportError('Gagal mengunduh template Excel.');
+    }
   };
 
   const fetchClasses = useCallback(async () => {
@@ -770,13 +870,13 @@ export default function StudentsManagementPage() {
         </div>
       )}
 
-      {/* CSV IMPORT MODAL */}
+      {/* CSV / EXCEL IMPORT MODAL */}
       {importModalOpen && (
         <div style={styles.modalOverlay}>
           <div className="glass" style={{ ...styles.modalCard, maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={styles.modalHeader}>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Upload size={20} /> Impor Data Murid Massal (CSV)
+                <Upload size={20} /> Impor Data Murid Massal (CSV / Excel)
               </h3>
               <button style={styles.modalCloseBtn} onClick={() => { setImportModalOpen(false); setImportFile(null); setImportPreview([]); setImportError(''); }}>
                 <X size={20} />
@@ -785,12 +885,15 @@ export default function StudentsManagementPage() {
 
             <div style={{ padding: '16px 0', color: 'var(--foreground)' }}>
               <p style={{ fontSize: '0.85rem', color: 'var(--muted)', marginBottom: '16px' }}>
-                Gunakan fitur ini untuk mendaftarkan murid dalam jumlah banyak sekaligus. Pastikan file berformat **CSV (.csv)** dengan judul kolom sesuai template.
+                Gunakan fitur ini untuk mendaftarkan murid dalam jumlah banyak sekaligus. Pastikan file berformat **CSV (.csv)** atau **Excel (.xlsx, .xls)** dengan judul kolom sesuai template.
               </p>
 
-              <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
                 <button type="button" onClick={downloadCSVSample} className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '6px 12px' }}>
                   <Download size={14} /> Unduh Contoh Template CSV
+                </button>
+                <button type="button" onClick={downloadExcelSample} className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '6px 12px' }}>
+                  <Download size={14} /> Unduh Contoh Template Excel (.xlsx)
                 </button>
               </div>
 
@@ -806,14 +909,14 @@ export default function StudentsManagementPage() {
                 <input
                   type="file"
                   id="csv-file-input"
-                  accept=".csv"
+                  accept=".csv, .xlsx, .xls"
                   onChange={handleFileChange}
                   style={{ display: 'none' }}
                 />
                 <label htmlFor="csv-file-input" style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
                   <Upload size={32} color="var(--primary)" />
                   <span style={{ fontWeight: '600', fontSize: '0.9rem' }}>
-                    {importFile ? importFile.name : 'Pilih atau Seret File CSV ke Sini'}
+                    {importFile ? importFile.name : 'Pilih atau Seret File CSV / Excel ke Sini'}
                   </span>
                   <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>Format Maksimal file: 5MB</span>
                 </label>
