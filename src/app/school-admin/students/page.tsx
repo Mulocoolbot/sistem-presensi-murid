@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Users, Plus, Edit, Trash2, RefreshCw, X, ShieldAlert, Search, ExternalLink, Eye, Upload, Download, Check } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, RefreshCw, X, ShieldAlert, Search, ExternalLink, Eye, Upload, Download, Check, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
 interface ClassOption {
   id: string;
@@ -82,6 +82,10 @@ export default function StudentsManagementPage() {
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importPreview, setImportPreview] = useState<ImportedStudent[]>([]);
   const [importError, setImportError] = useState('');
+
+  // Pagination States
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -448,6 +452,13 @@ export default function StudentsManagementPage() {
     s.nisn.includes(search)
   );
 
+  const totalItems = filteredStudents.length;
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
+  const paginatedStudents = filteredStudents.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
   return (
     <div>
       <div className="page-header">
@@ -494,7 +505,10 @@ export default function StudentsManagementPage() {
                 className="form-input"
                 placeholder="Masukkan nama lengkap, NIS, atau NISN murid..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
                 style={{ paddingLeft: '2.5rem' }}
               />
             </div>
@@ -505,7 +519,10 @@ export default function StudentsManagementPage() {
             <select
               className="form-input"
               value={selectedClassId}
-              onChange={(e) => setSelectedClassId(e.target.value)}
+              onChange={(e) => {
+                setSelectedClassId(e.target.value);
+                setCurrentPage(1);
+              }}
             >
               <option value="">Semua Kelas</option>
               {classes.map((cls) => (
@@ -541,7 +558,7 @@ export default function StudentsManagementPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredStudents.map((s) => (
+              {paginatedStudents.map((s) => (
                 <tr key={s.id}>
                   <td>
                     <div style={{ fontWeight: '700', fontSize: '0.95rem' }}>{s.fullName}</div>
@@ -614,6 +631,66 @@ export default function StudentsManagementPage() {
               ))}
             </tbody>
           </table>
+
+          {/* PAGINATION CONTROLS */}
+          {totalPages > 1 && (
+            <div style={styles.paginationContainer}>
+              <div style={styles.paginationInfo}>
+                Menampilkan <strong>{Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, totalItems)}</strong> - <strong>{Math.min(currentPage * ITEMS_PER_PAGE, totalItems)}</strong> dari <strong>{totalItems}</strong> murid
+              </div>
+              <div style={styles.paginationButtons}>
+                {currentPage > 1 && (
+                  <>
+                    <button 
+                      type="button"
+                      onClick={() => setCurrentPage(1)} 
+                      className="btn btn-secondary" 
+                      style={styles.pageBtn}
+                      title="Halaman Pertama"
+                    >
+                      <ChevronsLeft size={16} />
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} 
+                      className="btn btn-secondary" 
+                      style={styles.pageBtn}
+                      title="Halaman Sebelumnya"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                  </>
+                )}
+
+                <span style={styles.pageIndicator}>
+                  Halaman <strong>{currentPage}</strong> dari <strong>{totalPages}</strong>
+                </span>
+
+                {currentPage < totalPages && (
+                  <>
+                    <button 
+                      type="button"
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} 
+                      className="btn btn-secondary" 
+                      style={styles.pageBtn}
+                      title="Halaman Berikutnya"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setCurrentPage(totalPages)} 
+                      className="btn btn-secondary" 
+                      style={styles.pageBtn}
+                      title="Halaman Terakhir"
+                    >
+                      <ChevronsRight size={16} />
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -1148,5 +1225,39 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '4px',
     fontWeight: '600',
     color: 'var(--primary)',
+  },
+  paginationContainer: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: '20px',
+    padding: '12px 20px',
+    background: 'var(--card-bg)',
+    borderRadius: 'var(--radius-md)',
+    border: '1px solid var(--border)',
+    flexWrap: 'wrap',
+    gap: '12px',
+  },
+  paginationInfo: {
+    fontSize: '0.85rem',
+    color: 'var(--muted)',
+  },
+  paginationButtons: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  pageIndicator: {
+    fontSize: '0.85rem',
+    color: 'var(--foreground)',
+    margin: '0 8px',
+  },
+  pageBtn: {
+    padding: '0',
+    height: '36px',
+    width: '36px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 };
