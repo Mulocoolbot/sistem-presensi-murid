@@ -51,8 +51,8 @@ export default function DashboardLayout({ children, requiredRole }: DashboardLay
         setLoading(false);
       })
       .catch(() => {
-        // Offline fallback
-        if (typeof window !== 'undefined' && !navigator.onLine) {
+        // Offline fallback (even if navigator.onLine is true but server is unreachable)
+        if (typeof window !== 'undefined') {
           const cachedUserJson = localStorage.getItem('sipms_cache_user');
           if (cachedUserJson) {
             try {
@@ -339,7 +339,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: '100%',
     background: 'var(--danger-light)',
     color: 'var(--danger)',
-    border: '1px solid hsl(350, 89%, 95%)',
+    border: '1px solid var(--danger-light)',
     justifyContent: 'center',
     height: '42px',
     fontSize: '0.9rem',

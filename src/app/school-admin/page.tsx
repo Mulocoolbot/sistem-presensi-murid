@@ -52,8 +52,29 @@ export default function SchoolAdminDashboard() {
       setStats(data.stats);
       setRecentLogs(data.recentLogs);
       setRecentStudents(data.recentStudents);
+      
+      // Cache dashboard data
+      localStorage.setItem('sipms_cache_school_dashboard', JSON.stringify(data));
+      localStorage.setItem('sipms_cache_school_dashboard_time', new Date().toISOString());
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Terjadi kesalahan');
+      // Try to load cache
+      const cached = localStorage.getItem('sipms_cache_school_dashboard');
+      if (cached) {
+        try {
+          const data = JSON.parse(cached);
+          setStats(data.stats);
+          setRecentLogs(data.recentLogs);
+          setRecentStudents(data.recentStudents);
+          
+          const time = localStorage.getItem('sipms_cache_school_dashboard_time');
+          const dateStr = time ? new Date(time).toLocaleString('id-ID') : 'Beberapa saat lalu';
+          setError(`Menggunakan data offline (terakhir disinkronkan: ${dateStr})`);
+        } catch {
+          setError('Gagal memuat data offline');
+        }
+      } else {
+        setError(err instanceof Error ? err.message : 'Terjadi kesalahan jaringan');
+      }
     } finally {
       setLoading(false);
     }

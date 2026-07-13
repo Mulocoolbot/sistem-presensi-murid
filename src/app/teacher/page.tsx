@@ -52,8 +52,24 @@ export default function TeacherDashboard() {
       if (!res.ok) throw new Error('Gagal mengambil data dashboard guru');
       const json = await res.json();
       setData(json);
+      // Cache dashboard data
+      localStorage.setItem('sipms_cache_teacher_dashboard', JSON.stringify(json));
+      localStorage.setItem('sipms_cache_teacher_dashboard_time', new Date().toISOString());
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Terjadi kesalahan');
+      // Try to load cache
+      const cached = localStorage.getItem('sipms_cache_teacher_dashboard');
+      if (cached) {
+        try {
+          setData(JSON.parse(cached));
+          const time = localStorage.getItem('sipms_cache_teacher_dashboard_time');
+          const dateStr = time ? new Date(time).toLocaleString('id-ID') : 'Beberapa saat lalu';
+          setError(`Menggunakan data offline (terakhir disinkronkan: ${dateStr})`);
+        } catch {
+          setError('Gagal memuat data offline');
+        }
+      } else {
+        setError(err instanceof Error ? err.message : 'Terjadi kesalahan jaringan');
+      }
     } finally {
       setLoading(false);
     }

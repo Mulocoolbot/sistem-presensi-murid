@@ -5,6 +5,14 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Lock, User, Eye, EyeOff, School, GraduationCap, ArrowLeft } from 'lucide-react';
 
+async function hashPassword(password: string): Promise<string> {
+  const msgBuffer = new TextEncoder().encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashHex;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState('');
@@ -15,6 +23,22 @@ export default function LoginPage() {
 
   // Check session first
   useEffect(() => {
+    // If offline, check local storage session cache for redirection
+    if (typeof window !== 'undefined' && !navigator.onLine) {
+      const cachedUserStr = localStorage.getItem('sipms_cache_user');
+      if (cachedUserStr) {
+        try {
+          const user = JSON.parse(cachedUserStr);
+          if (user && user.role) {
+            if (user.role === 'SUPER_ADMIN') router.push('/super-admin');
+            else if (user.role === 'SCHOOL_ADMIN') router.push('/school-admin');
+            else if (user.role === 'TEACHER') router.push('/teacher');
+            return;
+          }
+        } catch { }
+      }
+    }
+
     fetch('/api/auth/me')
       .then((res) => {
         if (res.ok) {
@@ -60,6 +84,14 @@ export default function LoginPage() {
       // Check user role for routing
       const user = data.user;
       localStorage.setItem('sipms_cache_user', JSON.stringify(user));
+      localStorage.setItem('sipms_offline_mode', 'false');
+
+      // Cache password hash for offline login
+      const passHash = await hashPassword(password);
+      localStorage.setItem('sipms_offline_user_' + username.toLowerCase().trim(), JSON.stringify({
+        user,
+        passHash
+      }));
 
       if (user.role === 'SUPER_ADMIN') {
         router.push('/super-admin');
@@ -69,6 +101,34 @@ export default function LoginPage() {
         router.push('/teacher');
       }
     } catch (err: unknown) {
+      // Offline fallback login check
+      const cachedDataStr = localStorage.getItem('sipms_offline_user_' + username.toLowerCase().trim());
+      if (cachedDataStr) {
+        try {
+          const cachedData = JSON.parse(cachedDataStr);
+          const inputHash = await hashPassword(password);
+          if (cachedData.passHash === inputHash) {
+            // Password matches! Log them in offline
+            localStorage.setItem('sipms_cache_user', JSON.stringify(cachedData.user));
+            localStorage.setItem('sipms_offline_mode', 'true');
+            
+            const user = cachedData.user;
+            if (user.role === 'SUPER_ADMIN') {
+              router.push('/super-admin');
+            } else if (user.role === 'SCHOOL_ADMIN') {
+              router.push('/school-admin');
+            } else if (user.role === 'TEACHER') {
+              router.push('/teacher');
+            }
+            return;
+          } else {
+            setError('Password salah (Mode Offline)');
+            return;
+          }
+        } catch {
+          // If JSON parse fails, fall through
+        }
+      }
       setError(err instanceof Error ? err.message : 'Terjadi kesalahan sistem');
     } finally {
       setLoading(false);
