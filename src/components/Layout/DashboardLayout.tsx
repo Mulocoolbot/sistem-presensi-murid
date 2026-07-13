@@ -127,6 +127,7 @@ export default function DashboardLayout({ children, requiredRole }: DashboardLay
       teacherLinks.push({ label: 'Data Murid', path: '/teacher/students', icon: <User size={20} /> });
     }
 
+    teacherLinks.push({ label: 'Riwayat Harian', path: '/teacher/history', icon: <History size={20} /> });
     teacherLinks.push({ label: 'Rekap Presensi', path: '/teacher/rekap', icon: <FileBarChart size={20} /> });
 
     return teacherLinks;
