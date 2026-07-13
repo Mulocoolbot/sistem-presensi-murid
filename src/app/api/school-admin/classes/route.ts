@@ -4,7 +4,7 @@ import { logActivity } from '@/lib/activityLogger';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET() {
-  const { session, errorResponse } = await protectApi(['SCHOOL_ADMIN']);
+  const { session, errorResponse } = await protectApi(['SCHOOL_ADMIN', 'TEACHER']);
   if (errorResponse) return errorResponse;
 
   try {
