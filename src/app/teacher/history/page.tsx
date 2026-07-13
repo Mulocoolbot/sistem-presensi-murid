@@ -219,9 +219,9 @@ export default function AttendanceHistoryPage() {
       )}
 
       {/* Filter Card - Hide on print */}
-      <div className="glass no-print" style={styles.filterCard}>
-        <div style={styles.filterForm}>
-          <div className="form-group" style={styles.filterCol}>
+      <div className="glass no-print filter-card" style={styles.filterCard}>
+        <div className="filter-form" style={styles.filterForm}>
+          <div className="form-group filter-col" style={styles.filterCol}>
             <label className="form-label">Pilih Kelas</label>
             <select 
               className="form-input" 
@@ -235,7 +235,7 @@ export default function AttendanceHistoryPage() {
             </select>
           </div>
 
-          <div className="form-group" style={styles.filterCol}>
+          <div className="form-group filter-col" style={styles.filterCol}>
             <label className="form-label">Pilih Tanggal</label>
             <div style={{ position: 'relative' }}>
               <input 
@@ -249,7 +249,7 @@ export default function AttendanceHistoryPage() {
 
           <button 
             onClick={fetchHistory} 
-            className="btn btn-secondary" 
+            className="btn btn-secondary filter-btn" 
             style={styles.refreshBtn} 
             disabled={loading || !classId}
           >

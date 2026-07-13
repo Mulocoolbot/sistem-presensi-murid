@@ -482,10 +482,9 @@ export default function AttendanceWizardPage() {
         </div>
       )}
 
-      {/* Filter / Wizard Controls */}
-      <div className="glass" style={styles.wizardCard}>
-        <div style={styles.filterForm}>
-          <div className="form-group" style={{ ...styles.filterCol, flexGrow: 2 }}>
+      <div className="glass filter-card" style={styles.wizardCard}>
+        <div className="filter-form" style={styles.filterForm}>
+          <div className="form-group filter-col" style={{ ...styles.filterCol, flexGrow: 2 }}>
             <label className="form-label">Pilih Kelas</label>
             <select
               className="form-input"
@@ -502,7 +501,7 @@ export default function AttendanceWizardPage() {
             </select>
           </div>
 
-          <div className="form-group" style={styles.filterCol}>
+          <div className="form-group filter-col" style={styles.filterCol}>
             <label className="form-label">Tanggal Presensi</label>
             <input
               type="date"
@@ -515,7 +514,7 @@ export default function AttendanceWizardPage() {
 
           <button 
             onClick={handleLoadSheet} 
-            className="btn btn-primary" 
+            className="btn btn-primary filter-btn" 
             style={styles.loadBtn}
             disabled={loading || classes.length === 0}
           >

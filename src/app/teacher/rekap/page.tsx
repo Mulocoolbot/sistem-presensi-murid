@@ -125,9 +125,9 @@ export default function RekapAttendancePage() {
       )}
 
       {/* Filter Bar - Hide on print */}
-      <div className="glass no-print" style={styles.filterCard}>
-        <div style={styles.filterForm}>
-          <div className="form-group" style={styles.filterCol}>
+      <div className="glass no-print filter-card" style={styles.filterCard}>
+        <div className="filter-form" style={styles.filterForm}>
+          <div className="form-group filter-col" style={styles.filterCol}>
             <label className="form-label">Pilih Kelas</label>
             <select className="form-input" value={classId} onChange={(e) => setClassId(e.target.value)}>
               <option value="">Semua Kelas</option>
@@ -139,7 +139,7 @@ export default function RekapAttendancePage() {
 
 
 
-          <div className="form-group" style={styles.filterCol}>
+          <div className="form-group filter-col" style={styles.filterCol}>
             <label className="form-label">Tahun Ajaran</label>
             <select className="form-input" value={academicYear} onChange={(e) => setAcademicYear(e.target.value)}>
               <option value="2025/2026">2025/2026</option>
@@ -148,7 +148,7 @@ export default function RekapAttendancePage() {
             </select>
           </div>
 
-          <div className="form-group" style={styles.filterCol}>
+          <div className="form-group filter-col" style={styles.filterCol}>
             <label className="form-label">Semester</label>
             <select className="form-input" value={semester} onChange={(e) => setSemester(e.target.value)}>
               <option value="Ganjil">Ganjil</option>
@@ -156,7 +156,7 @@ export default function RekapAttendancePage() {
             </select>
           </div>
 
-          <button onClick={handleFetchRekap} className="btn btn-primary" style={styles.loadBtn} disabled={loading}>
+          <button onClick={handleFetchRekap} className="btn btn-primary filter-btn" style={styles.loadBtn} disabled={loading}>
             <RefreshCw size={16} className={loading ? 'spin' : ''} /> Tampilkan Rekap
           </button>
         </div>

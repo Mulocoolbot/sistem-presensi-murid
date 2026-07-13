@@ -280,9 +280,9 @@ export default function TeacherStudentsPage() {
       )}
 
       {/* Filter / Search Bar */}
-      <div className="glass" style={styles.filterCard}>
-        <div style={styles.filterForm}>
-          <div className="form-group" style={{ ...styles.filterCol, flexGrow: 2 }}>
+      <div className="glass filter-card" style={styles.filterCard}>
+        <div className="filter-form" style={styles.filterForm}>
+          <div className="form-group filter-col" style={{ ...styles.filterCol, flexGrow: 2 }}>
             <label className="form-label">Cari Nama / NIS</label>
             <div style={styles.searchWrapper}>
               <Search size={18} style={styles.searchIcon} />
@@ -298,7 +298,7 @@ export default function TeacherStudentsPage() {
           </div>
 
           {isKepalaSekolah && (
-            <div className="form-group" style={styles.filterCol}>
+            <div className="form-group filter-col" style={styles.filterCol}>
               <label className="form-label">Tampilkan Kelas</label>
               <select
                 className="form-input"
